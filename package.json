@@ -1,0 +1,27 @@
+{
+  "name": "mysql-api",
+  "version": "1.0.0",
+  "description": "Week3 - API",
+  "main": "index.js",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "morgan": "^1.10.0",
+    "mysql": "^2.18.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/muftiaa0/mysql-api.git"
+  },
+  "keywords": [],
+  "author": "Mufti, Azeem",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/muftiaa0/mysql-api/issues"
+  },
+  "homepage": "https://github.com/muftiaa0/mysql-api#readme"
+}

@@ -1,0 +1,2 @@
+exports.CREATE_AUTH_TABLE = 'CREATE TABLE authentication (AuthID int NOT NULL AUTO_INCREMENT, UserName varchar(255), PassWord varchar(255), PRIMARY KEY (AuthID, UserName), FOREIGN KEY (UserName) REFERENCES Persons(UserName))';
+exports.CONSTRAINT_AUTH_TABLE = 'alter table authentication add constraint uq1 unique (UserName)';
