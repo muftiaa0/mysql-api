@@ -1,44 +1,48 @@
+const jwt = require('jsonwebtoken');
+const jwtconfig = require('../jwt-config');
+
 const con = require('../config.js');
-const queries = require('../queries/person.queries');
+const personQueries = require('../queries/person.queries');
 
-exports.getPerson = function(req, res) { // localhost:3000/persons/3
-    con.query(queries.GET_PERSON, [req.params.personID], function(err, result, fields) {
-        if (err) {
-            res.send(err);
-        }
-        res.json(result);
-    });
-};
 
-exports.getAllPersons = function(req, res) {
-    con.query(queries.GET_ALL_PERSONS, function(err, result, fields) {
+exports.getPerson = function (req, res) {
+    const token = req.headers['auth-token'];
+    if (!token) {
+        res.status(401).send({ auth: false, msg: 'No token provided.' });
+    }
+
+    jwt.verify(token, jwtconfig.secret, function(err, decoded) {
         if (err) {
-            res.send(err);
+            res
+                .status(500)
+                .send({ auth: false, message: 'Failed to authenticate token.' });
         }
-        res.json(result);
+        con.query(personQueries.GET_PERSON, [decoded.id], function (err, person) {
+            if (err) {
+                res.status(500).send({ msg: 'Could not find person.' });
+            }
+            if (!person) {
+                res.status(400).send({ msg: 'No person found' })
+
+            }
+            console.log(person);
+            res.json(person);
+        });
     });
-};
+}
+
 
 exports.updatePerson = function(req, res) {
-    con.query(queries.UPDATE_PERSON, [req.body.LastName, req.body.FirstName, req.params.personID], function(err, result, fields) {
+    con.query(personQueries.UPDATE_PERSON, [req.body.last_name, req.body.first_name, req.params.person_id], function(err, result, fields) {
         if (err) {                      
             res.send(err);
         }
         res.json({ message: 'Person updated successfully.' });;
     });
-};
-
-exports.createPerson = function(req, res) {
-    con.query(queries.CREATE_PERSON, [req.body.LastName, req.body.FirstName, req.body.username], function(err, result, fields) {
-        if (err) {                      
-            res.send(err);
-        }
-        res.json({ message: 'Person created successfully.' });;
-    });
 }
 
 exports.deletePerson = function(req, res) {
-    con.query(queries.DELETE_PERSON, [req.params.personID], function(err, result, fields) {
+    con.query(personQueries.DELETE_PERSON, [req.params.person_id], function(err, result, fields) {
         if (err) {                      
             res.send(err);
         }

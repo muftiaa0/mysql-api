@@ -1,15 +1,13 @@
-const controllers = require('../controllers/person.controller');
+const personController = require('../controllers/person.controller');
+const authController = require('../controllers/auth.controller');
 const express = require('express');
+const verifyToken = require('../middleware/auth.middleware')
 
 const personRoutes = express.Router();
 
 personRoutes
-    .get('/', controllers.getAllPersons)
-    .post('/', controllers.createPerson);
-
-personRoutes
-    .get('/:personID', controllers.getPerson)
-    .put('/:personID', controllers.updatePerson)
-    .delete('/:personID', controllers.deletePerson);
+    .get('/me', verifyToken, personController.getPerson)
+    .post('/me/update', verifyToken, authController.updatePerson)
+    .delete('/:person_id', personController.deletePerson);
 
 module.exports = personRoutes;

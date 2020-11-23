@@ -2,6 +2,7 @@ const express = require('express');
 const port = process.env.PORT || 3000;
 
 const personRoutes = require('./routes/person.routes');
+const authRoutes = require('./routes/auth.routes')
 const middleware = require('./middleware/errors.middleware');
 
 // using Morgan's Logger
@@ -12,6 +13,10 @@ const bodyParser = require('body-parser');
 
 const app = express(); // startup
 
+// CORS
+var cors = require('cors');
+app.use(cors());
+
 // setup basic logging
 app.use(logger(logLevel));
 
@@ -19,8 +24,9 @@ app.use(logger(logLevel));
 app.use(bodyParser.urlencoded({extended:false}));
 app.use(bodyParser.json());
 
-// handle person route
-app.use('/person', personRoutes);
+// routing
+app.use('/api/person', personRoutes);
+app.use('/api/auth', authRoutes);
 
 // handle bad HTTP response codes
 app.use(middleware.error404);

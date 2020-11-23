@@ -1,9 +1,10 @@
-Week3 - API that can perform basic CRUD operations on a person stored in a mysql database.
+Week4 - API that can perform basic JWT authentication.
 
 
 API Overview:<br> 
-/persons/ GET -- will retrieve all persons<br>
-/persons/ POST -- will create a new username if LastName, FirstName, username is specified in body<br>
-/persons/# GET -- will retrieve a specific person who has their ID = #<br>
-/persons/# PUT -- will update a specific person who has their ID = # with a LastName and FirstName specified in the body<br>
-/persons/# DELETE -- will delete a specific person who has their id = #<br>
+/auth/login POST -- will attempt to login and return an auth-token if successful<br>
+/auth/createPerson POST -- will attempt to create a new person provided the username doesn't exist<br> 
+/persons/me GET -- will retrieve information about the current user logged in provided their auth-token is valid<br>
+/persons/me/update POST -- will make an update to a password for a given username.<br>
+/persons/# DELETE -- will delete a specific person who has their id = # - LEGACY<br> 
+Currently if most of the calls fail the API will crash but to overcome this we can add error handling.

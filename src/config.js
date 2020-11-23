@@ -1,6 +1,7 @@
 // Database info
 const mysql = require('mysql');
 const queries = require('./queries/person.queries');
+const authQueries = require('./queries/auth.queries')
 const host = process.env.DB_HOST || 'localhost';
 const user = process.env.DB_USER || 'root';
 const password = process.env.DB_PW || 'password';
@@ -16,6 +17,7 @@ con.connect(function(err) {
     if (err) throw err;
     console.log('Successfully Connected to Database');
 
+    // create person table
     con.query(queries.CREATE_PERSON_TABLE, function(err, results) {
         if (err) {
             console.log('Failed to create table. Person table already exists')
@@ -31,8 +33,9 @@ con.connect(function(err) {
             console.log('Constraint added successfully');
         }
     });
-
-    con.query(queries.CREATE_AUTH_TABLE, function(err, results) {
+    
+    // create auth table
+    con.query(authQueries.CREATE_AUTH_TABLE, function(err, results) {
         if (err) {
             console.log('Failed to create table. Authentication table already exists') 
         } else {
@@ -40,7 +43,7 @@ con.connect(function(err) {
         } 
     });
 
-    con.query(queries.CONSTRAINT_AUTH_TABLE, function(err, results) {
+    con.query(authQueries.CONSTRAINT_AUTH_TABLE, function(err, results) {
         if (err) {
             console.log('Auth unique constraint already exists')
         } else {
