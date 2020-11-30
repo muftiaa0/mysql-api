@@ -1,48 +1,72 @@
-const jwt = require('jsonwebtoken');
-const jwtconfig = require('../jwt-config');
+const bcrypt = require('bcryptjs');
+const query = require('../utils/query.js');
+const connection = require('../config.js');
+const { DELETE_PERSON, GET_PERSON_FROM_USERNAME } = require('../queries/person.queries');
+const { GET_AUTH, UPDATE_PASSWORD} = require('../queries/auth.queries');
 
-const con = require('../config.js');
-const personQueries = require('../queries/person.queries');
 
-
-exports.getPerson = function (req, res) {
-    const token = req.headers['auth-token'];
-    if (!token) {
-        res.status(401).send({ auth: false, msg: 'No token provided.' });
-    }
-
-    jwt.verify(token, jwtconfig.secret, function(err, decoded) {
-        if (err) {
-            res
-                .status(500)
-                .send({ auth: false, message: 'Failed to authenticate token.' });
-        }
-        con.query(personQueries.GET_PERSON, [decoded.id], function (err, person) {
-            if (err) {
-                res.status(500).send({ msg: 'Could not find person.' });
-            }
-            if (!person) {
-                res.status(400).send({ msg: 'No person found' })
-
-            }
-            console.log(person);
-            res.json(person);
+exports.getPerson = async (req, res) => {
+    const person = req.person;
+    console.log(person);
+    if (person.id) {
+        const con = await connection().catch((err) => {
+            throw err;
         });
-    });
-}
 
+        console.log(person);
+        const retrievedPerson = await query(con, GET_PERSON_FROM_USERNAME, [person.id]).catch(
+            (err) => {
+                res.status(500).json({ msg: 'Could not retrieve person at this time.' });
+            }
+        );
 
-exports.updatePerson = function(req, res) {
-    con.query(personQueries.UPDATE_PERSON, [req.body.last_name, req.body.first_name, req.params.person_id], function(err, result, fields) {
-        if (err) {                      
-            res.send(err);
+        if (retrievedPerson.length) {
+            res.status(200).send(retrievedPerson);
+        } else {
+            res.status(400).json({ msg: 'Could not retrieve person at this time.' });
         }
-        res.json({ message: 'Person updated successfully.' });;
-    });
-}
+    }
+};
+ 
+exports.updatePassword = async (req, res) => {
+    const person = req.person;
+    const passwordHash = bcrypt.hashSync(req.body.password);
+
+    if (person.id) {
+        const con = await connection().catch((err) => {
+            throw err;
+        });
+
+        // does this username exist in the auth table?
+        const retrievedAuth = await query(con, GET_AUTH, [person.id]).catch(
+            (err) => {
+                res.status(500).json({ msg: 'Could not retrieve authentication information at this time.' });
+            }
+        );
+
+        console.log(retrievedAuth);
+        
+        if (!! retrievedAuth.length) {
+            const updatePassword = await query(con, UPDATE_PASSWORD, [passwordHash, person.id]).catch(
+                (err) => {
+                    res.status(500).json({ msg: 'Failed to update password.' });
+                }
+            );
+
+            console.log(updatePassword);
+            if (!updatePassword.length) {
+                res.send({ msg: 'User updated successfully!' });
+            } else {
+                res.status(500).json({ msg: 'Failed to update password 1' });
+            }
+        } else {
+            res.status(500).json({ msg: 'Failed to update password 2' });
+        }
+    }
+};
 
 exports.deletePerson = function(req, res) {
-    con.query(personQueries.DELETE_PERSON, [req.params.person_id], function(err, result, fields) {
+    con.query(DELETE_PERSON, [req.params.person_id], function(err, result, fields) {
         if (err) {                      
             res.send(err);
         }

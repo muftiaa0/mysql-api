@@ -1,92 +1,166 @@
 // package imports 
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const {NEW_AUTH, GET_AUTH } = require('../queries/auth.queries');
+const {CREATE_PERSON, GET_PERSON_FROM_USERNAME } = require('../queries/person.queries');
 
-const con = require('../config.js');
-const jwtConfig = require('../jwt-config.js');
-const authQueries = require('../queries/auth.queries');
-const personQueries = require('../queries/person.queries');
+const query = require('../utils/query.js');
+const { refreshTokens, generateRefreshToken, generateAccessToken } = require('../utils/jwt-helpers');
+const connection = require('../config.js');
 
-exports.createPerson = function(req, res) {
-    con.query(personQueries.CREATE_PERSON, [req.body.last_name, req.body.first_name, req.body.username], function(err) {
-        if (err) {      
-            res.status(500);                
-            res.send({msg: "Failed to create person."});
+exports.createPerson = async (req, res) => {
+    // hash password for use
+    const passwordHash = bcrypt.hashSync(req.body.password);
+
+    const con = await connection().catch((err) => {
+        throw err;
+    });
+
+
+    // the new person and newauth queries can happen at the same time independently but we want to make sure they occur before we retrieve the new person.
+    const newPerson = await query(con, CREATE_PERSON, [req.body.last_name, req.body.first_name, req.body.username]).catch(
+        (err) => {
+            res.status(500);
+            res.send({
+                msg: 'Could not create person because this username exists already'
+            });
         }
+    );
 
-        // hash password for use
-        const passwordHash = bcrypt.hashSync(req.body.password);
-        con.query(authQueries.NEW_AUTH, [req.body.username, passwordHash], function (err, result, fields) {
-            if (err) {
-                res
-                    .status(500)
-                    .send({ msg: "Failed to create person." });
+    const newAuth = await query(con, NEW_AUTH, [req.body.username, passwordHash]).catch(
+        (err) => {
+            res.status(500);
+            res.send({
+                msg: 'Could not create authentication information.'
+            });
+        }
+    );
+
+    if (newPerson.affectedRows >= 1 && newAuth.affectedRows >= 1) {
+        const newPerson = await query(con, GET_PERSON_FROM_USERNAME, [req.body.username]).catch(
+            (err) => {
+                res.status(500);
+                res.send({
+                    msg: 'Could not retrieve the person created.'
+                });
             }
+        );
+        res.send({ newPerson, msg: 'Created new account!' });
+    } else {
+        res.send({
+            msg: 'New Person was not created successfully.'
+        });
+    }
+}
 
+exports.login = async (req, res) => {
+    const con = await connection().catch((err) => {
+        throw err;
+    });
+
+    // does this username exist in the auth table?
+    const auth = await query(con, GET_AUTH, [req.body.username]).catch(
+        (err) => {
+            res.status(500);
+            res.send({
+                msg: 'Username does not exist. Please create a new person.'
+            });
+        }
+    );
+
+    console.log(auth);
+    if (auth.length < 1) {
+        res.status(403).send({
+            msg: 'Username does not exist.'
         });
-        con.query(personQueries.GET_PERSON_FROM_USERNAME, [req.body.username], function (err, person) {
-            console.log(person);
-            res.send(person);
+    } else {
+        const validPassword = await bcrypt
+            .compare(req.body.password, auth[0].password)
+            .catch((err) => {
+                res.json(500).json({
+                    msg: 'Invalid Password'
+                });
+            });
+
+        if (!validPassword) {
+            res.status(403).send({
+                 msg: 'Invalid password'
+                 });
+        } else {
+            const person = await query(con, GET_PERSON_FROM_USERNAME, [req.body.username]).catch(
+                (err) => {
+                    res.status(500);
+                    res.send({
+                        msg: 'Person does not exist. Please create a new person.'
+                    });
+                }
+            );
+
+            const accessToken = generateAccessToken(person[0].username, { expiresIn: 86400 });
+            const refreshToken = generateRefreshToken(person[0].username, { expiresIn: 86400 });
+            refreshTokens.push(refreshToken);
+            
+            res
+                .header('access_token', accessToken)
+                .json({ auth: true, 
+                        msg: 'Logged in!',
+                        token_type: 'bearer',
+                        access_token: accessToken,
+                        expires_in: 86400,
+                        refresh_token: refreshToken,
+                     });
+        }
+    }
+};
+
+exports.token = (req, res) => {
+    const refreshToken = req.body.token;
+
+    if (!refreshToken) {
+        res
+            .status(401)
+            .send({
+                auth: false,
+                msg: 'Access Denied. No token provided'
+            });
+    }
+    if (!refreshTokens.includes(refreshToken)) {
+        res
+        .status(403)
+        .send({
+            msg: 'Invalid refresh token.'
         });
+    }
+
+    const verified = verifyToken(refreshToken, jwtconfig.refresh, req, res);
+
+    if (verified) {
+        const accessToken = generateToken(person[0].username, { expiresIn: 86400 });
+        res
+            .header('access_token', accessToken)
+            .json({
+                auth: true,
+                msg: 'Logged in!',
+                token_type: 'bearer',
+                access_token: accessToken,
+                expires_in: 86400,
+                refresh_token: refreshToken,
+            });
+        res
+            .status(403)
+            .send({
+                msg: 'Invalid Token'
+            });
+    }  
+}
+
+exports.logout = (req, res) => {
+    const refreshToken = req.body.token;
+    refreshTokens = refreshTokens.filter((t) => t !== refreshToken);
+    res.json({
+        msg: 'Logout Successful.'
     });
 }
 
-exports.login = function(req, res) {
-    // does this username exist in the auth table?
-    con.query(authQueries.GET_AUTH, [req.body.username], function(err, auth) {
-            if (err) {
-                res.status(500);
-                res.send({ msg: 'Person does not exist. Please create a new user.'});
-            }
-            console.log(auth);
-
-            bcrypt
-                .compare(req.body.password, auth[0].password)
-                .then(function (validPassword) {
-                    if (!validPassword) {
-                        res.status(403).send({ msg: 'Invalid password' });
-                    }
-
-                    con.query(personQueries.GET_PERSON_FROM_USERNAME, [req.body.username], function (err, person) {
-                        console.debug(person);
-                        const token = jwt.sign({ id: person[0].person_id }, jwtConfig.secret);
-                        if (err) {
-                            res.status(500);
-                            res.send({ msg: 'Critical services are down at this time. Please try again later.' })
-                        }
-                        res
-                            .header('auth-token', token)
-                            .send({ auth: true, person, msg: 'Logged in!' })
-
-                    })
-
-                })
-                .catch(console.log());
-        });
-}
 
 
-// this method can be updated so that the username is no longer needed. We can potentially sign the token with the username as well making it easier to link between the two db tables
-exports.updatePerson = function (req, res) {
-    // does this username exist in the auth table?
-    con.query(authQueries.GET_AUTH, [req.body.username], function (err, auth) {
-            if (err) {
-                res.status(500);
-                res.send({ msg: 'Person does not exist. Please create a new user.' });
-            }
-            console.log(auth);
-
-            const passwordHash = bcrypt.hashSync(req.body.password);
-
-            con.query(
-                authQueries.UPDATE_PASSWORD, [passwordHash, req.body.username], function (err, res) {
-                    if (err) {
-                        console.log(err);
-                        res.status(500)
-                        res.send({ msg: 'Could not update user password.' });
-                    }
-                })
-                res.send({ msg: 'User updated successfully!' });
-        });
-};
 

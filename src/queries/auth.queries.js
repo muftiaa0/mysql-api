@@ -1,5 +1,4 @@
-exports.CREATE_AUTH_TABLE = 'CREATE TABLE authentication (auth_id int NOT NULL AUTO_INCREMENT, username varchar(255), password varchar(255), PRIMARY KEY (auth_id, password), FOREIGN KEY (username) REFERENCES persons(username))';
-exports.CONSTRAINT_AUTH_TABLE = 'alter table authentication add constraint uq1 unique (username)';
+exports.CREATE_AUTH_TABLE = 'CREATE TABLE authentication (auth_id int NOT NULL AUTO_INCREMENT, username varchar(255) UNIQUE, password varchar(255), PRIMARY KEY (auth_id, password), FOREIGN KEY (username) REFERENCES persons(username))';
 
 exports.NEW_AUTH = 'INSERT INTO authentication (username, password) VALUES (?, ?)';
 exports.UPDATE_PASSWORD = 'UPDATE authentication SET password = ? where username = ?';

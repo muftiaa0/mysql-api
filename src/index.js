@@ -3,7 +3,7 @@ const port = process.env.PORT || 3000;
 
 const personRoutes = require('./routes/person.routes');
 const authRoutes = require('./routes/auth.routes')
-const middleware = require('./middleware/errors.middleware');
+const {error404, error500} = require('./middleware/errors.middleware');
 
 // using Morgan's Logger
 const logger = require('morgan');
@@ -29,8 +29,8 @@ app.use('/api/person', personRoutes);
 app.use('/api/auth', authRoutes);
 
 // handle bad HTTP response codes
-app.use(middleware.error404);
-app.use(middleware.error500);
+app.use(error404);
+app.use(error500);
 
 
 app.listen(port, function() {

@@ -1,55 +1,55 @@
 // Database info
 const mysql = require('mysql');
-const queries = require('./queries/person.queries');
-const authQueries = require('./queries/auth.queries')
+const { CREATE_PERSON_TABLE } = require('./queries/person.queries');
+const { CREATE_AUTH_TABLE } = require('./queries/auth.queries');
+const query = require('./utils/query');
 const host = process.env.DB_HOST || 'localhost';
 const user = process.env.DB_USER || 'root';
 const password = process.env.DB_PW || 'password';
 const database = process.env.DB_NAME || 'week3';
 
-// Database connection string
-const con = mysql.createConnection({
-    host, user, password, database
-});
 
-// Make connection to DB
-con.connect(function(err) {
-    if (err) throw err;
-    console.log('Successfully Connected to Database');
+const connection = async () =>
+    new Promise((resolve, reject) => {
+        const con = mysql.createConnection({
+            host,
+            user,
+            password,
+            database,
+        });
 
-    // create person table
-    con.query(queries.CREATE_PERSON_TABLE, function(err, results) {
-        if (err) {
-            console.log('Failed to create table. Person table already exists')
-        } else {
-            console.log('Person table created successfully');
+        con.connect((err) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+        });
+
+        resolve(con);
+    });
+
+// Create the connection with required details
+(async () => {
+    const _con = await connection().catch((err) => {
+        throw err;
+    });
+
+    const personTableCreated = await query(_con, CREATE_PERSON_TABLE).catch(
+        (err) => {
+            console.log(err);
+            
         }
-    });
+    );
 
-    con.query(queries.CONSTRAINT_PERSON_TABLE, function(err, results) {
-        if (err) {
-            console.log('Person unique constraint already exists')
-        } else {
-            console.log('Constraint added successfully');
+    const authTableCreated = await query(_con, CREATE_AUTH_TABLE).catch(
+        (err) => {
+            console.log(err);
         }
-    });
-    
-    // create auth table
-    con.query(authQueries.CREATE_AUTH_TABLE, function(err, results) {
-        if (err) {
-            console.log('Failed to create table. Authentication table already exists') 
-        } else {
-            console.log('Authentication table created successfully.');
-        } 
-    });
+    );
 
-    con.query(authQueries.CONSTRAINT_AUTH_TABLE, function(err, results) {
-        if (err) {
-            console.log('Auth unique constraint already exists')
-        } else {
-            console.log('Constraint added successfully');
-        }
-    });
-});
+    if (!!personTableCreated && !!authTableCreated) {
+        console.log('Both AUTH and PERSON Tables Created!');
+    }
+})();
 
-module.exports = con;
+module.exports = connection;

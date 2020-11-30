@@ -1,13 +1,12 @@
-const personController = require('../controllers/person.controller');
-const authController = require('../controllers/auth.controller');
+const { getPerson, deletePerson, updatePassword } = require('../controllers/person.controller');
 const express = require('express');
-const verifyToken = require('../middleware/auth.middleware')
+const canAccess = require('../middleware/auth.middleware')
 
 const personRoutes = express.Router();
 
 personRoutes
-    .get('/me', verifyToken, personController.getPerson)
-    .post('/me/update', verifyToken, authController.updatePerson)
-    .delete('/:person_id', personController.deletePerson);
+    .get('/me', canAccess, getPerson)
+    .post('/me/updatePassword', canAccess, updatePassword)
+    .delete('/:person_id', deletePerson);
 
 module.exports = personRoutes;
