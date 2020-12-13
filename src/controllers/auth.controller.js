@@ -1,7 +1,7 @@
 // package imports 
 const bcrypt = require('bcryptjs');
-const {NEW_AUTH, GET_AUTH } = require('../queries/auth.queries');
-const {CREATE_PERSON, GET_PERSON_FROM_USERNAME } = require('../queries/person.queries');
+const { NEW_AUTH, GET_AUTH } = require('../queries/auth.queries');
+const { CREATE_PERSON, GET_PERSON_FROM_USERNAME } = require('../queries/person.queries');
 
 const query = require('../utils/query.js');
 const { refreshTokens, generateRefreshToken, generateAccessToken } = require('../utils/jwt-helpers');
@@ -60,36 +60,40 @@ exports.login = async (req, res) => {
     // does this username exist in the auth table?
     const auth = await query(con, GET_AUTH, [req.body.username]).catch(
         (err) => {
-            res.status(500);
-            res.send({
-                msg: 'Username does not exist. Please create a new person.'
-            });
+            res.status(500)
+                .json({
+                    auth: false,
+                    msg: 'Username does not exist. Please create a new person.'
+                });
         }
     );
-
-    console.log(auth);
+    
     if (auth.length < 1) {
-        res.status(403).send({
+        res.status(403).json({
+            auth: false,
             msg: 'Username does not exist.'
         });
     } else {
         const validPassword = await bcrypt
             .compare(req.body.password, auth[0].password)
             .catch((err) => {
-                res.json(500).json({
+                res.status(500).json({
+                    auth: false,
                     msg: 'Invalid Password'
                 });
             });
 
         if (!validPassword) {
-            res.status(403).send({
-                 msg: 'Invalid password'
-                 });
+            res.status(403).json({
+                auth: false,
+                msg: 'Invalid password'
+            });
         } else {
             const person = await query(con, GET_PERSON_FROM_USERNAME, [req.body.username]).catch(
                 (err) => {
                     res.status(500);
-                    res.send({
+                    res.json({
+                        auth: false,
                         msg: 'Person does not exist. Please create a new person.'
                     });
                 }
@@ -98,16 +102,17 @@ exports.login = async (req, res) => {
             const accessToken = generateAccessToken(person[0].username, { expiresIn: 86400 });
             const refreshToken = generateRefreshToken(person[0].username, { expiresIn: 86400 });
             refreshTokens.push(refreshToken);
-            
+
             res
                 .header('access_token', accessToken)
-                .json({ auth: true, 
-                        msg: 'Logged in!',
-                        token_type: 'bearer',
-                        access_token: accessToken,
-                        expires_in: 86400,
-                        refresh_token: refreshToken,
-                     });
+                .json({
+                    auth: true,
+                    msg: 'Logged in!',
+                    token_type: 'bearer',
+                    access_token: accessToken,
+                    expires_in: 86400,
+                    refresh_token: refreshToken,
+                });
         }
     }
 };
@@ -125,10 +130,10 @@ exports.token = (req, res) => {
     }
     if (!refreshTokens.includes(refreshToken)) {
         res
-        .status(403)
-        .send({
-            msg: 'Invalid refresh token.'
-        });
+            .status(403)
+            .send({
+                msg: 'Invalid refresh token.'
+            });
     }
 
     const verified = verifyToken(refreshToken, jwtconfig.refresh, req, res);
@@ -150,16 +155,19 @@ exports.token = (req, res) => {
             .send({
                 msg: 'Invalid Token'
             });
-    }  
+    }
 }
 
-exports.logout = (req, res) => {
+exports.logout = async (req, res) => {
     const refreshToken = req.body.token;
-    refreshTokens = refreshTokens.filter((t) => t !== refreshToken);
+    var tokenIndex = refreshTokens.indexOf(refreshToken);
+    refreshTokens.splice(tokenIndex, 1);
+
     res.json({
         msg: 'Logout Successful.'
     });
-}
+};
+
 
 
 

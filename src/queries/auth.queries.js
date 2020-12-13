@@ -5,3 +5,5 @@ exports.UPDATE_PASSWORD = 'UPDATE authentication SET password = ? where username
 
 exports.GET_AUTH = 'select * from authentication where username = ?';
 exports.GET_HASH_PASSWORD = 'select password from authentication where username = ?';
+
+exports.DELETE_AUTH = 'DELETE FROM authentication where username = ?';
